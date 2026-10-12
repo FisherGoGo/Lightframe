@@ -6,3 +6,9 @@
 *.VC.db
 *.VC.opendb
 captures/
+
+# 验收产物、验证脚本与测试代码仅保留在本地
+/文档/验收/**/*.log
+/文档/验收/**/*.png
+/文档/验收/**/*.ps1
+/Photograph/tests/
