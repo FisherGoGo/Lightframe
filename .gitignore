@@ -1,0 +1,8 @@
+.vs/
+**/bin/
+**/obj/
+**/.deps/
+*.vcxproj.user
+*.VC.db
+*.VC.opendb
+captures/

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <GlfwRoot Condition="'$(Platform)'=='x64'">$(ProjectDir).deps\glfw-3.4.bin.WIN64\</GlfwRoot>
+    <GlfwRoot Condition="'$(Platform)'=='Win32'">$(ProjectDir).deps\glfw-3.4.bin.WIN32\</GlfwRoot>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)third_party\glad\include;$(GlfwRoot)include;$(ProjectDir).deps\glm-1.0.1;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLFW_INCLUDE_NONE;GLFW_DLL;NOMINMAX;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <WarningLevel>Level4</WarningLevel>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(GlfwRoot)lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3dll.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(GlfwRoot)lib-vc2022\glfw3.dll" "$(OutDir)glfw3.dll"
+if errorlevel 1 exit /b 1</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <Target Name="CheckDependencies" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(GlfwRoot)lib-vc2022\glfw3dll.lib') Or !Exists('$(ProjectDir).deps\glm-1.0.1\glm\glm.hpp')" Text="Missing dependencies. Run: powershell -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\setup-deps.ps1&quot;" />
+  </Target>
+</Project>
