@@ -6,7 +6,8 @@ New-Item -ItemType Directory -Path $downloadRoot -Force | Out-Null
 $packages = @(
     @{ Name = 'glfw-3.4.bin.WIN64.zip'; Folder = 'glfw-3.4.bin.WIN64'; Url = 'https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip'; Hash = '54EFA829400F2A0537F742B2B3BDD74E437BB4F2F048E4B7D3C5557D11A611E6' },
     @{ Name = 'glfw-3.4.bin.WIN32.zip'; Folder = 'glfw-3.4.bin.WIN32'; Url = 'https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN32.zip'; Hash = '59AF286ED9E1422D512E2B26CCB0C3100C600277279D305E3DF6D64A74728F8A' },
-    @{ Name = 'glm-1.0.1.zip'; Folder = 'glm-1.0.1'; Url = 'https://codeload.github.com/g-truc/glm/zip/refs/tags/1.0.1'; Hash = '09C5716296787E1F7FCB87B1CBDBF26814EC1288ED6259CCD30D5D9795809FA5' }
+    @{ Name = 'glm-1.0.1.zip'; Folder = 'glm-1.0.1'; Url = 'https://codeload.github.com/g-truc/glm/zip/refs/tags/1.0.1'; Hash = '09C5716296787E1F7FCB87B1CBDBF26814EC1288ED6259CCD30D5D9795809FA5' },
+    @{ Name = 'imgui-1.91.9b.zip'; Folder = 'imgui-1.91.9b'; Url = 'https://codeload.github.com/ocornut/imgui/zip/refs/tags/v1.91.9b'; Hash = 'FD37507C8476A6D14CC7C4B352401F31BCBD0F0D995D35390811E968C466F46E' }
 )
 foreach ($package in $packages) {
     $archivePath = Join-Path $downloadRoot $package.Name
@@ -22,4 +23,4 @@ foreach ($package in $packages) {
         throw "Extraction failed: $($package.Name)"
     }
 }
-Write-Host 'GLFW 3.4 and GLM 1.0.1 ready. Open Photograph.slnx and build x64 Debug.'
+Write-Host 'GLFW 3.4, GLM 1.0.1 and Dear ImGui 1.91.9b ready. Open Photograph.slnx and build x64 Debug.'

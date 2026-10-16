@@ -148,9 +148,17 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\CameraController.cpp" />
     <ClCompile Include="src\Scene.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
     <ClCompile Include="src\Shader.cpp" />
+    <ClCompile Include="src\UI.cpp" />
+    <ClCompile Include=".deps\imgui-1.91.9b\imgui.cpp" />
+    <ClCompile Include=".deps\imgui-1.91.9b\imgui_draw.cpp" />
+    <ClCompile Include=".deps\imgui-1.91.9b\imgui_tables.cpp" />
+    <ClCompile Include=".deps\imgui-1.91.9b\imgui_widgets.cpp" />
+    <ClCompile Include=".deps\imgui-1.91.9b\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include=".deps\imgui-1.91.9b\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="third_party\glad\src\glad.c">
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
@@ -158,9 +166,13 @@
   <ItemGroup>
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\CameraController.h" />
+    <ClInclude Include="src\CameraSettings.h" />
     <ClInclude Include="src\Scene.h" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\Shader.h" />
+    <ClInclude Include="src\UI.h" />
+    <ClInclude Include="src\ViewportRect.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shaders\vertex.txt">

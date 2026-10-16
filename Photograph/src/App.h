@@ -2,11 +2,14 @@
 
 #include <memory>
 #include "Camera.h"
+#include "CameraController.h"
+#include "CameraSettings.h"
 #include "Scene.h"
 
 struct GLFWwindow;
 class Mesh;
 class Shader;
+class UI;
 
 // 协调窗口、输入和每帧绘制；GPU 资源先于窗口上下文销毁。
 class App
@@ -26,16 +29,14 @@ private:
     bool initialize(bool smokeTest);
     int renderLoop(bool smokeTest);
     void processInput(float deltaSeconds);
-    void stopMouseLook();
-    void processMouseMovement();
 
     GLFWwindow* window = nullptr;
     bool glfwInitialized = false;
     std::unique_ptr<Shader> ourShader;
     std::unique_ptr<Mesh> cube;
+    std::unique_ptr<UI> ui;
     Camera camera;
+    CameraController cameraController;
+    CameraSettings settings;
     Scene scene;
-    bool mouseLookActive = false;
-    double lastCursorX = 0.0;
-    double lastCursorY = 0.0;
 };

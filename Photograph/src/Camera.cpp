@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "CameraSettings.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
@@ -34,10 +35,10 @@ glm::mat4 Camera::viewMatrix() const
     return glm::lookAt(position, position + front, up);
 }
 
-glm::mat4 Camera::projectionMatrix() const
+glm::mat4 Camera::projectionMatrix(const CameraSettings& settings) const
 {
-    // 摄影焦距与传感器参数留到 P03；本轮保留原投影。
-    return glm::perspective(glm::radians(45.0f), 1.5f, 0.1f, 100.0f);
+    // 焦距仅改变投影；窗口尺寸与机位不参与照片视场角计算。
+    return glm::perspective(settings.verticalFovRadians(), settings.aspectRatio(), 0.1f, 100.0f);
 }
 
 void Camera::move(glm::vec3 localDirection, float deltaSeconds)

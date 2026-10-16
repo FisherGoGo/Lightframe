@@ -2,13 +2,15 @@
 
 #include <glm/glm.hpp>
 
+struct CameraSettings;
+
 // 世界单位为米；只管理机位与矩阵，不持有窗口或 GPU 资源。
 class Camera
 {
 public:
     Camera();
     glm::mat4 viewMatrix() const;
-    glm::mat4 projectionMatrix() const;
+    glm::mat4 projectionMatrix(const CameraSettings& settings) const;
     void move(glm::vec3 localDirection, float deltaSeconds);
     void rotate(float deltaX, float deltaY);
     void resetPose();

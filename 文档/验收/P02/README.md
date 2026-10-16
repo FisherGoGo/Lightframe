@@ -2,7 +2,9 @@
 
 验收日志、截图、验证脚本和独立测试代码仅保留在本地，不纳入 GitHub 仓库。本文保留历史验收结果、本地文件名及本轮命令；文档中的脚本命令需使用本地保留的脚本执行。
 
-日期：2026-10-12。基于 P01 的 App/Mesh 骨架新增 Camera 和 Scene；以下为首次验收结果。同日按用户要求将转向改为作业的逐帧轮询形式，最新实现与验证见 [调整记录](#同日调整逐帧轮询转向)。
+2026-10-13 起，本文完整复验命令仅在用户明确要求专项验证时运行，不属于每次修改后的默认检查。默认仅构建当前配置并启动程序确认不报错，运行效果由用户手动检查，详见 [agent.md 第 6 节](../../../agent.md#6-默认检查与手动验收)。下列已执行结果保留为历史记录。
+
+日期：2026-10-12。基于 P01 的 App/Mesh 骨架新增 Camera 和 Scene；以下为首次验收结果。同日按用户要求将转向改为作业的逐帧轮询形式，该次实现与验证见 [逐帧轮询调整](#同日调整逐帧轮询转向)；2026-10-13 最新职责拆分与复验见 [CameraController 调整](#2026-10-13调整cameracontroller-拆分)。
 
 ## 结果
 
@@ -40,11 +42,11 @@ P02 本机验收完成；课程演示设备、其他显卡及人工操作尚未�
 
 ## 同日调整：逐帧轮询转向
 
-用户要求沿用 `CUC_CG/07_摄像机_10.12/Work2` 的转向形式。当前实现取消鼠标坐标回调，App 在每帧输入处理中用 `glfwGetCursorPos()` 读取位置，计算 `dx=x-lastX`、`dy=lastY-y`，更新基准后传给 Camera；先转向，再按更新后的方向移动。进入右键捕获后立即读取基准，松开、失焦和 R 复位仍结束观察。Camera 直接累加 yaw/pitch，保留 ±89° 俯仰限幅和用户调整的 0.05°/坐标单位灵敏度，不给鼠标位移乘 `dt`。
+用户要求沿用 `CUC_CG/07_摄像机_10.12/Work2` 的转向形式。该次实现取消鼠标坐标回调，App 在每帧输入处理中用 `glfwGetCursorPos()` 读取位置，计算 `dx=x-lastX`、`dy=lastY-y`，更新基准后传给 Camera；先转向，再按更新后的方向移动。进入右键捕获后立即读取基准，松开、失焦和 R 复位仍结束观察。Camera 直接累加 yaw/pitch，保留 ±89° 俯仰限幅和用户调整的 0.05°/坐标单位灵敏度，不给鼠标位移乘 `dt`。
 
 四种配置 Rebuild 与绘制自检均通过，0 警告、0 错误；独立 CPU 检查全部通过，90° 转向检查输入调整为 1800 个坐标单位。完整窗口复验通过移动、复位、右键进入/转向/释放、失焦恢复、缩放、最小化恢复与 Esc。Debug/Release 均已重新构建。
 
-最新证据见 CPU 检查（`p02-polling-camera.log`，仅本地）、窗口检查（`p02-polling-window.log`，仅本地）、源码清单（`p02-polling-source-sha256.log`，仅本地） 与 `p02-polling-build-*.log` / `p02-polling-smoke-*.log`。`p02-*` 的原始记录与清单保留为首次版本证据。
+该次证据见 CPU 检查（`p02-polling-camera.log`，仅本地）、窗口检查（`p02-polling-window.log`，仅本地）、源码清单（`p02-polling-source-sha256.log`，仅本地） 与 `p02-polling-build-*.log` / `p02-polling-smoke-*.log`。`p02-*` 的原始记录与清单保留为首次版本证据。
 
 本轮命令如下，默认复验命令仍运行当前实现：
 
@@ -53,3 +55,24 @@ P02 本机验收完成；课程演示设备、其他显卡及人工操作尚未�
 & ./文档/验收/P02/verify-camera.ps1 -Stage p02-polling
 & ./文档/验收/P02/verify-window.ps1 -Stage p02-polling
 ```
+
+## 2026-10-13调整：CameraController 拆分
+
+新增 `CameraController.h/.cpp`，承接 WASD/QE 方向组合、逐帧鼠标差值、观察状态、光标捕获/释放与复位。App 持有控制器，保留 GLFW 回调注册、焦点/最小化判断、Esc 和每帧协调；CameraController 调用时显式接收窗口与 Camera，不持有它们或注册回调。Camera 的位置、方向、速度、灵敏度和矩阵算法保持原有实现。
+
+- x64/Win32 × Debug/Release 均 Rebuild 通过，0 警告、0 错误；四种配置的隐藏窗口绘制自检通过。
+- 原有独立 CPU 检查 10 项全部通过；真实窗口自动操作通过 WASD/QE 移动、R 复位、右键进入无跳动/转向/释放、按住 W/右键时失焦及恢复、宽/竖窗口、最小化恢复与 Esc 退出。
+- 正常、右键进入、观察复位、尺寸恢复和最小化恢复五张截图与上一版 `p02-polling-*` 内部 RGB 像素完全一致，排除外围 10 px；同一轮各次复位也恢复完全相同的内部像素。
+- 本机环境与前次相同；本轮未执行人工操作验收，其他显卡与课程演示设备仍待验证。UI 尚未实现，后续由 App 判断 UI 捕获与取景器状态，再决定是否转发相机操作。
+
+本地证据为 `p02-controller-build-*.log`、`p02-controller-smoke-*.log`、`p02-controller-camera.log`、`p02-controller-window.log`、`p02-controller-image-comparison.log`、`p02-controller-source-sha256.log` 及同前缀截图，均按既有规则保留在本地。
+
+从仓库根目录使用 PowerShell 7 运行现有脚本：
+
+```powershell
+& ./文档/验收/P02/build.ps1 -Stage p02-controller
+& ./文档/验收/P02/verify-camera.ps1 -Stage p02-controller
+& ./文档/验收/P02/verify-window.ps1 -Stage p02-controller
+```
+
+本轮重构不改变 P03～P10 的功能安排；P03 尚未开始。

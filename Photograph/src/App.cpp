@@ -11,6 +11,7 @@
 #include <iostream>
 #include "Shader.h"
 #include "Mesh.h"
+#include "UI.h"
 
 namespace
 {
@@ -28,6 +29,7 @@ App::~App()
     if (window)
     {
         glfwMakeContextCurrent(window);
+        ui.reset();
         cube.reset();
         ourShader.reset();
         glfwDestroyWindow(window);
@@ -70,8 +72,8 @@ bool App::initialize(bool smokeTest)
     }
 
     window = glfwCreateWindow(
-        900, 600,
-        "Lightframe | WASD move | Q/E height | RMB look | R reset | Esc exit",
+        smokeTest ? 900 : 1200, 600,
+        "Lightframe | Focal length experiment",
         nullptr, nullptr
     );
 
@@ -88,32 +90,7 @@ bool App::initialize(bool smokeTest)
     {
         if (!focused)
         {
-            static_cast<App*>(glfwGetWindowUserPointer(source))->stopMouseLook();
-        }
-    });
-    glfwSetMouseButtonCallback(window, [](GLFWwindow* source, int button, int action, int)
-    {
-        auto* app = static_cast<App*>(glfwGetWindowUserPointer(source));
-        if (button != GLFW_MOUSE_BUTTON_RIGHT) { return; }
-        if (action == GLFW_PRESS && glfwGetWindowAttrib(source, GLFW_FOCUSED))
-        {
-            app->mouseLookActive = true;
-            glfwSetInputMode(source, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            // 与作业的 Attach 一样，捕获后立即读取位置作为基准。
-            glfwGetCursorPos(source, &app->lastCursorX, &app->lastCursorY);
-        }
-        else if (action == GLFW_RELEASE)
-        {
-            app->stopMouseLook();
-        }
-    });
-    glfwSetKeyCallback(window, [](GLFWwindow* source, int key, int, int action, int)
-    {
-        if (key == GLFW_KEY_R && action == GLFW_PRESS)
-        {
-            auto* app = static_cast<App*>(glfwGetWindowUserPointer(source));
-            app->camera.resetPose();
-            app->stopMouseLook();
+            static_cast<App*>(glfwGetWindowUserPointer(source))->cameraController.stopMouseLook(source);
         }
     });
 
@@ -139,6 +116,12 @@ bool App::initialize(bool smokeTest)
     // --------创建立方体顶点资源--------
     cube = std::make_unique<Mesh>();
 
+    if (!smokeTest)
+    {
+        ui = std::make_unique<UI>();
+        if (!ui->initialize(window)) { return false; }
+    }
+
     glEnable(GL_DEPTH_TEST);
     return true;
 }
@@ -161,7 +144,6 @@ int App::renderLoop(bool smokeTest)
         // 长时间停顿后不补走整段距离；每帧（含最小化期间）刷新时钟。
         float deltaSeconds = static_cast<float>(std::min(now - lastFrameTime, 0.1));
         lastFrameTime = now;
-        processInput(deltaSeconds);
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
@@ -169,14 +151,31 @@ int App::renderLoop(bool smokeTest)
         // 最小化时暂停绘制，恢复窗口后继续。
         if (width == 0 || height == 0)
         {
+            cameraController.stopMouseLook(window);
             glfwWaitEventsTimeout(0.1);
             continue;
+        }
+
+        if (ui)
+        {
+            ui->beginFrame(cameraController.isMouseLookActive());
+            const UIRequests requests = ui->draw(settings, camera);
+            if (requests.resetPose || requests.resetExperiment)
+            {
+                cameraController.resetPose(window, camera);
+            }
+            if (requests.resetFocalLength)
+            {
+                settings.setFocalLengthMm(CameraSettings::defaultFocalLengthMm);
+            }
+            if (requests.resetExperiment) { settings.setFocalLengthMm(24.0f); }
+            processInput(deltaSeconds);
         }
 
         glClearColor(0.08f, 0.10f, 0.14f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // 保持 3:2 取景比例，窗口比例不同时留边，立方体不会被拉伸。
+        // 自检沿用完整窗口；普通运行使用 UI 计算的真实照片矩形。
         int viewportWidth = width;
         int viewportHeight = static_cast<int>(width / 1.5f);
         if (viewportHeight > height)
@@ -187,7 +186,21 @@ int App::renderLoop(bool smokeTest)
         glViewport((width - viewportWidth) / 2, (height - viewportHeight) / 2,
             viewportWidth, viewportHeight);
 
-        glm::mat4 projection = camera.projectionMatrix();
+        if (ui)
+        {
+            const ViewportRect& viewport = ui->getViewportRect();
+            int windowWidth, windowHeight;
+            glfwGetWindowSize(window, &windowWidth, &windowHeight);
+            const float scaleX = static_cast<float>(width) / windowWidth;
+            const float scaleY = static_cast<float>(height) / windowHeight;
+            const int left = static_cast<int>(std::round(viewport.x * scaleX));
+            const int right = static_cast<int>(std::round((viewport.x + viewport.width) * scaleX));
+            const int top = static_cast<int>(std::round(viewport.y * scaleY));
+            const int bottom = static_cast<int>(std::round((viewport.y + viewport.height) * scaleY));
+            glViewport(left, height - bottom, right - left, bottom - top);
+        }
+
+        glm::mat4 projection = camera.projectionMatrix(settings);
         glm::mat4 view = camera.viewMatrix();
 
         ourShader->use();
@@ -221,6 +234,7 @@ int App::renderLoop(bool smokeTest)
             break;
         }
 
+        if (ui) { ui->render(); }
         glfwSwapBuffers(window);
     }
 
@@ -232,41 +246,38 @@ void App::processInput(float deltaSeconds)
     if (!glfwGetWindowAttrib(window, GLFW_FOCUSED)
         || glfwGetWindowAttrib(window, GLFW_ICONIFIED))
     {
+        cameraController.stopMouseLook(window);
         return;
     }
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+
+    const bool inputCaptured = ui->capturesKeyboard() || ui->capturesMouse();
+    if (!ui->capturesKeyboard() && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 
-    // 与作业的 Update 一样，先转头，再沿本帧更新后的朝向移动。
-    processMouseMovement();
+    if (cameraController.isMouseLookActive()
+        && (inputCaptured || glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) != GLFW_PRESS))
+    {
+        cameraController.stopMouseLook(window);
+    }
+    if (inputCaptured) { return; }
 
-    glm::vec3 direction(0.0f);
-    direction.z = static_cast<float>((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        - (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS));
-    direction.x = static_cast<float>((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        - (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS));
-    direction.y = static_cast<float>((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        - (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS));
-    camera.move(direction, deltaSeconds);
-}
-
-void App::stopMouseLook()
-{
-    mouseLookActive = false;
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-}
-
-void App::processMouseMovement()
-{
-    if (!mouseLookActive) { return; }
-
-    double x, y;
-    glfwGetCursorPos(window, &x, &y);
-    float deltaX = static_cast<float>(x - lastCursorX);
-    float deltaY = static_cast<float>(lastCursorY - y);
-    lastCursorX = x;
-    lastCursorY = y;
-    camera.rotate(deltaX, deltaY);
+    double cursorX, cursorY;
+    glfwGetCursorPos(window, &cursorX, &cursorY);
+    const bool overViewport = ui->getViewportRect().contains(cursorX, cursorY);
+    if (ui->resetPosePressed()) { cameraController.resetPose(window, camera); }
+    if (overViewport && ui->rightMousePressed()
+        && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+    {
+        cameraController.startMouseLook(window);
+    }
+    if (overViewport && !cameraController.isMouseLookActive())
+    {
+        const float focalLength = std::clamp(settings.focalLengthMm + ui->mouseWheel() * 2.0f,
+            CameraSettings::minFocalLengthMm, CameraSettings::maxFocalLengthMm);
+        settings.setFocalLengthMm(focalLength);
+    }
+    if (!overViewport && !cameraController.isMouseLookActive()) { return; }
+    cameraController.update(window, camera, deltaSeconds);
 }
